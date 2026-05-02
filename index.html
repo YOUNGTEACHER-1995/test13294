@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Color Access Studio</title>
+    <title>Gemini Vision Bot</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,76 +13,34 @@
     <div id="app">
         <header>
             <div class="header-content">
-                <h1>Color Access <span>Studio</span></h1>
-                <p class="subtitle">Ensuring inclusive design for everyone.</p>
+                <h1>Vision<span>Bot</span></h1>
+                <p class="subtitle">Experience the world through different eyes.</p>
             </div>
-            <button id="help-toggle" aria-label="Show help">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            </button>
         </header>
 
-        <aside id="onboarding" class="banner">
-            <div class="banner-content">
-                <h3>New here?</h3>
-                <p>Add colors to your palette, see how they appear to users with color blindness, and verify WCAG contrast ratios instantly.</p>
+        <main id="chat-container">
+            <div id="chat-input-area">
+                <input type="text" id="user-input" placeholder="Type a message (e.g. 'Show me a red rose')..." aria-label="Chat input">
+                <button id="send-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
             </div>
-            <button class="close-banner" aria-label="Close banner">&times;</button>
-        </aside>
 
-        <main>
-            <section id="palette-section">
-                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2>Your Palette</h2>
-                    <button id="add-color" class="btn-primary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        Add Color
-                    </button>
-                </div>
-                <div id="palette-grid" class="palette-grid">
-                    <!-- Color Cards will be injected here -->
-                </div>
-            </section>
-
-            <section id="simulator-section">
-                <div class="simulator-controls">
-                    <h2>Simulation Filter</h2>
-                    <div class="filter-tabs" role="tablist">
-                        <button class="filter-tab active" data-filter="normal" role="tab" aria-selected="true">Normal</button>
-                        <button class="filter-tab" data-filter="protanopia" role="tab" aria-selected="false">Protanopia</button>
-                        <button class="filter-tab" data-filter="deuteranopia" role="tab" aria-selected="false">Deuteranopia</button>
-                        <button class="filter-tab" data-filter="tritanopia" role="tab" aria-selected="false">Tritanopia</button>
+            <div id="chat-messages">
+                <div class="message bot">
+                    <div class="message-content">
+                        Hello! I'm VisionBot. Ask me to show you an image (e.g., "Show me a watermelon") and I'll show you how it looks to people with color blindness.
                     </div>
                 </div>
-
-                <div class="simulation-view">
-                    <div class="view-panel original">
-                        <span class="view-label">Original</span>
-                        <div id="original-render" class="render-area"></div>
-                    </div>
-                    <div class="view-panel simulated">
-                        <span class="view-label" id="simulation-label">Normal Vision</span>
-                        <div id="simulated-render" class="render-area"></div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="education-section" class="info-grid">
-                <div class="info-card">
-                    <h3>What is Color Accessibility?</h3>
-                    <p>Color accessibility ensures that people with visual impairments can perceive and interact with your content. This includes color blindness and low vision.</p>
-                </div>
-                <div class="info-card">
-                    <h3>Understanding Contrast Ratio</h3>
-                    <p>WCAG 2.1 requires a contrast ratio of at least <strong>4.5:1</strong> for normal text (AA) and <strong>7:1</strong> for AAA compliance. This helps users with low contrast sensitivity.</p>
-                </div>
-            </section>
+            </div>
         </main>
 
         <footer>
-            <p style="text-align: center; color: var(--text-secondary); margin-top: 2rem;">&copy; 2026 Color Access Studio. Built for accessibility.</p>
+            <p style="text-align: center; color: var(--text-secondary); margin-top: 1rem;">Powered by Gemini & Unsplash</p>
         </footer>
     </div>
 
+    <!-- Color Blindness Simulation Filters -->
     <svg style="display: none;">
         <defs>
             <filter id="protanopia-filter">

@@ -1,0 +1,5 @@
+.env
+.idx/
+.vscode/
+node_modules/
+dist/
