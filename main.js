@@ -1,29 +1,20 @@
 import { GoogleGenAI } from "https://esm.run/@google/genai";
 
-// API Key loading
-let API_KEY = "";
+// API Key loading helper
 async function getApiKey() {
     try {
         const response = await fetch('.env');
+        if (!response.ok) throw new Error();
         const text = await response.text();
         const match = text.match(/GEMINI_API_KEY=(.*)/);
-        return match ? match[1].trim() : "";
+        return match ? match[1].trim() : "AIzaSyBRfb2yVGofUTarmItp9lwHp2cqW0sqHes";
     } catch (e) {
-        return "AIzaSyBRfb2yVGofUTarmItp9lwHp2cqW0sqHes"; // Fallback
+        // Fallback to the provided key if .env fails to load
+        return "AIzaSyBRfb2yVGofUTarmItp9lwHp2cqW0sqHes";
     }
 }
 
 // --- Original Simulator Logic ---
-function getRelativeLuminance(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return 0;
-    const [r, g, b] = [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)].map(val => {
-        val /= 255;
-        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
 class ColorCard extends HTMLElement {
     constructor() {
         super();
@@ -37,28 +28,46 @@ class ColorCard extends HTMLElement {
         const name = this.getAttribute('name') || 'New Color';
         this.shadowRoot.innerHTML = `
             <style>
-                .card { background: #141b24; border-radius: 12px; overflow: hidden; border: 1px solid #1e2732; color: #f0f4f8; font-family: sans-serif; }
-                .preview { height: 60px; background-color: ${color}; position: relative; }
-                .content { padding: 12px; }
-                .delete { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.2); border: none; color: red; cursor: pointer; border-radius: 4px; }
-                input { width: 100%; background: #1e2732; border: 1px solid #333; color: white; margin-top: 5px; padding: 4px; border-radius: 4px; }
+                .card { background: #141b24; border-radius: 12px; overflow: hidden; border: 1px solid #1e2732; color: #f0f4f8; font-family: sans-serif; transition: transform 0.2s; }
+                .card:hover { transform: translateY(-2px); border-color: #3b82f6; }
+                .preview { height: 80px; background-color: ${color}; position: relative; }
+                .content { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+                .delete { position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.2); border: none; color: #ef4444; cursor: pointer; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+                .delete:hover { background: #ef4444; color: white; }
+                input { width: 100%; background: #1e2732; border: 1px solid #333; color: white; padding: 6px; border-radius: 4px; font-size: 0.8rem; }
+                input:focus { outline: none; border-color: #3b82f6; }
             </style>
             <div class="card">
-                <div class="preview"><button class="delete">&times;</button></div>
+                <div class="preview"><button class="delete" title="Delete">&times;</button></div>
                 <div class="content">
-                    <input type="text" value="${name}" class="name-in">
-                    <input type="text" value="${color}" class="hex-in">
+                    <input type="text" value="${name}" class="name-in" placeholder="Color Name">
+                    <input type="text" value="${color}" class="hex-in" placeholder="#000000">
                 </div>
             </div>
         `;
-        this.shadowRoot.querySelector('.delete').onclick = () => this.dispatchEvent(new CustomEvent('color-delete', { bubbles: true, composed: true }));
+        this.shadowRoot.querySelector('.delete').onclick = () => {
+            this.dispatchEvent(new CustomEvent('color-delete', { bubbles: true, composed: true }));
+        };
+        
+        const hexIn = this.shadowRoot.querySelector('.hex-in');
+        hexIn.onchange = (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                this.setAttribute('color', e.target.value);
+                this.dispatchEvent(new CustomEvent('color-update', { bubbles: true, composed: true }));
+            }
+        };
     }
 }
 customElements.define('color-card', ColorCard);
 
 class Simulator {
     constructor() {
-        this.palette = [{ name: 'Brand Blue', color: '#3b82f6' }];
+        // Initialize with 3 colors as requested
+        this.palette = [
+            { name: 'Primary Blue', color: '#3b82f6' },
+            { name: 'Sunset Orange', color: '#f97316' },
+            { name: 'Vibrant Pink', color: '#ec4899' }
+        ];
         this.grid = document.getElementById('palette-grid');
         this.originalRender = document.getElementById('original-render');
         this.simulatedRender = document.getElementById('simulated-render');
@@ -67,7 +76,7 @@ class Simulator {
     }
     init() {
         document.getElementById('add-color').onclick = () => {
-            this.palette.push({ name: 'New Color', color: '#6366f1' });
+            this.palette.push({ name: 'New Color', color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0') });
             this.render();
         };
         this.filterTabs.forEach(tab => {
@@ -80,28 +89,40 @@ class Simulator {
         this.render();
         window.addEventListener('color-delete', (e) => {
             const index = Array.from(this.grid.children).indexOf(e.target);
-            this.palette.splice(index, 1);
-            this.render();
+            if (index > -1) {
+                this.palette.splice(index, 1);
+                this.render();
+            }
         });
+        window.addEventListener('color-update', () => this.render(false));
     }
     setFilter(filter) {
         const filterMap = { 'normal': 'none', 'protanopia': 'url(#protanopia-filter)', 'deuteranopia': 'url(#deuteranopia-filter)', 'tritanopia': 'url(#tritanopia-filter)' };
         this.simulatedRender.style.filter = filterMap[filter] || 'none';
         document.getElementById('simulation-label').textContent = filter.charAt(0).toUpperCase() + filter.slice(1) + " Vision";
     }
-    render() {
-        this.grid.innerHTML = '';
+    render(updateGrid = true) {
+        if (updateGrid) {
+            this.grid.innerHTML = '';
+        }
         this.originalRender.innerHTML = '';
         this.simulatedRender.innerHTML = '';
-        this.palette.forEach(item => {
-            const card = document.createElement('color-card');
-            card.setAttribute('name', item.name);
-            card.setAttribute('color', item.color);
-            this.grid.appendChild(card);
+        
+        const cards = updateGrid ? [] : Array.from(this.grid.querySelectorAll('color-card'));
+
+        this.palette.forEach((item, index) => {
+            if (updateGrid) {
+                const card = document.createElement('color-card');
+                card.setAttribute('name', item.name);
+                card.setAttribute('color', item.color);
+                this.grid.appendChild(card);
+            }
+            
+            const color = updateGrid ? item.color : cards[index].getAttribute('color');
             [this.originalRender, this.simulatedRender].forEach(container => {
                 const swatch = document.createElement('div');
                 swatch.className = 'swatch';
-                swatch.style.backgroundColor = item.color;
+                swatch.style.backgroundColor = color;
                 container.appendChild(swatch);
             });
         });
@@ -119,62 +140,125 @@ class VisionBot {
         this.send = document.getElementById('send-btn');
         this.messages = document.getElementById('chat-messages');
         this.ai = null;
-        this.init();
+
+        // UI Listeners attached immediately for robustness
+        this.setupUI();
+        // Background API initialization
+        this.initAI();
     }
-    async init() {
-        const key = await getApiKey();
-        this.ai = new GoogleGenAI(key);
-        this.toggle.onclick = () => this.window.classList.toggle('hidden');
-        this.close.onclick = () => this.window.classList.add('hidden');
-        this.send.onclick = () => this.handleSend();
-        this.input.onkeypress = (e) => { if (e.key === 'Enter') this.handleSend(); };
+    
+    setupUI() {
+        const handleToggle = (e) => {
+            e.stopPropagation();
+            const isHidden = this.window.classList.contains('hidden');
+            if (isHidden) {
+                this.window.classList.remove('hidden');
+                this.input.focus();
+            } else {
+                this.window.classList.add('hidden');
+            }
+        };
+
+        this.toggle.addEventListener('click', handleToggle);
+        this.close.addEventListener('click', () => this.window.classList.add('hidden'));
+        
+        this.send.addEventListener('click', () => this.handleSend());
+        this.input.addEventListener('keypress', (e) => { 
+            if (e.key === 'Enter') this.handleSend(); 
+        });
+
+        // Close on escape key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !this.window.classList.contains('hidden')) {
+                this.window.classList.add('hidden');
+            }
+        });
     }
+
+    async initAI() {
+        try {
+            const key = await getApiKey();
+            this.ai = new GoogleGenAI(key);
+        } catch (e) {
+            console.error("AI Init Error:", e);
+        }
+    }
+
     async handleSend() {
         const text = this.input.value.trim();
         if (!text) return;
+        
         this.appendMessage('user', text);
         this.input.value = '';
+        
         const loading = this.appendMessage('bot', '...', true);
+        
         try {
+            if (!this.ai) {
+                const key = await getApiKey();
+                this.ai = new GoogleGenAI(key);
+            }
+            
             const model = this.ai.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
-            const prompt = `Identify image search intent. If searching, return [[keyword]]. Response: ${text}`;
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(`System: Identify image search intent. If searching, return [[keyword]]. Otherwise chat normally.\nUser: ${text}`);
             const response = result.response.text();
+            
             loading.parentElement.remove();
             this.processResponse(response);
         } catch (e) {
-            loading.textContent = "Error: Check API Key.";
+            console.error(e);
+            loading.textContent = "Error: Please check your API key in .env or try again later.";
         }
     }
-    appendMessage(role, text) {
+
+    appendMessage(role, text, isLoading = false) {
         const div = document.createElement('div');
         div.className = `message ${role}`;
         div.innerHTML = `<div class="message-content">${text}</div>`;
         this.messages.prepend(div);
         return div.querySelector('.message-content');
     }
+
     async processResponse(text) {
         const match = text.match(/\[\[(.*?)\]\]/);
-        this.appendMessage('bot', text.replace(/\[\[.*?\]\]/g, '').trim() || "Searching...");
-        if (match) await this.showImages(match[1]);
+        const cleanText = text.replace(/\[\[.*?\]\]/g, '').trim();
+        
+        if (cleanText) {
+            this.appendMessage('bot', cleanText);
+        }
+        
+        if (match) {
+            const keyword = match[1];
+            await this.showImages(keyword);
+        }
     }
+
     async showImages(keyword) {
-        const url = `https://source.unsplash.com/featured/?${encodeURIComponent(keyword)}`;
-        const res = await fetch(url);
-        const finalUrl = res.url;
-        const div = document.createElement('div');
-        div.className = 'message bot';
-        div.innerHTML = `
-            <div class="message-content">
-                Simulation for "${keyword}":
-                <div class="image-result">
-                    <div class="image-card"><img src="${finalUrl}"><div class="image-label">Orig</div></div>
-                    <div class="image-card"><img src="${finalUrl}" class="protanopia"><div class="image-label">Prot</div></div>
-                    <div class="image-card"><img src="${finalUrl}" class="deuteranopia"><div class="image-label">Deut</div></div>
-                    <div class="image-card"><img src="${finalUrl}" class="tritanopia"><div class="image-label">Trit</div></div>
-                </div>
-            </div>`;
-        this.messages.prepend(div);
+        const loading = this.appendMessage('bot', `Simulating colors for "${keyword}"...`);
+        try {
+            // Using a more reliable way to get Unsplash images
+            const url = `https://source.unsplash.com/featured/?${encodeURIComponent(keyword)}`;
+            const res = await fetch(url);
+            const finalUrl = res.url;
+            
+            loading.parentElement.remove();
+            
+            const div = document.createElement('div');
+            div.className = 'message bot';
+            div.innerHTML = `
+                <div class="message-content">
+                    <p>Simulation for <strong>${keyword}</strong>:</p>
+                    <div class="image-result">
+                        <div class="image-card"><img src="${finalUrl}"><div class="image-label">Original</div></div>
+                        <div class="image-card"><img src="${finalUrl}" class="protanopia"><div class="image-label">Prot</div></div>
+                        <div class="image-card"><img src="${finalUrl}" class="deuteranopia"><div class="image-label">Deut</div></div>
+                        <div class="image-card"><img src="${finalUrl}" class="tritanopia"><div class="image-label">Trit</div></div>
+                    </div>
+                </div>`;
+            this.messages.prepend(div);
+        } catch (e) {
+            loading.textContent = `Could not find image for "${keyword}".`;
+        }
     }
 }
 
